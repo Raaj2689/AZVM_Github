@@ -1,13 +1,10 @@
-variable "admin_username" {
-  default = "azureuser"
-}
+variable "client_id" {}
+variable "client_secret" {}
+variable "tenant_id" {}
+variable "subscription_id" {}
 
-variable "admin_password" {
-  description = "Admin password"
-  type        = string
-  sensitive   = true
-}
-
+variable "admin_username" {}
+variable "admin_password" {}
 variable "location" {
-  default = "Central US"
+  default = "East US"
 }
