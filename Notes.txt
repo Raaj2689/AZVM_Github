@@ -1,0 +1,129 @@
+🔒 Security Consideration:
+You're hardcoding sensitive credentials (admin_password) in terraform.tfvars. 
+While it works in local testing, it's not recommended for production use. 
+
+✅ Step 1: Organize Your Terraform Code
+Ensure your Terraform code is in the following structure:
+
+terraform-azure-vm/
+├── main.tf
+├── variables.tf
+├── terraform.tfvars
+├── outputs.tf           # optional, for things like public IP
+└── .github/
+    └── workflows/
+        └── terraform.yml
+
+
+✅ Step 2: Set Up GitHub Secrets
+In your GitHub repo, go to:
+
+Settings → Secrets and variables → Actions → New repository secret
+
+Add the following secrets:
+
+Secret Name	Description
+ARM_CLIENT_ID	Azure Service Principal Client ID
+ARM_CLIENT_SECRET	Azure Service Principal Secret
+ARM_SUBSCRIPTION_ID	Your Azure Subscription ID
+ARM_TENANT_ID	Azure Tenant ID
+
+You can create a Service Principal with this command (replace <name> with a unique name):
+
+az ad sp create-for-rbac --name "AZURESPN" --role="Contributor" --scopes="/subscriptions/017b3490-6be9-49a4-ba0d-795637b2bce2" --sdk-auth
+
+
+C:\Users\RK>az ad sp create-for-rbac --name "AZURESPN" --role="Contributor" --scopes="/subscriptions/017b3490-6be9-49a4-ba0d-795637b2bce2" --sdk-auth
+Option '--sdk-auth' has been deprecated and will be removed in a future release.
+Creating 'Contributor' role assignment under scope '/subscriptions/017b3490-6be9-49a4-ba0d-795637b2bce2'
+The output includes credentials that you must protect. Be sure that you do not include these credentials in your code or check the credentials into your source control. For more information, see https://aka.ms/azadsp-cli
+{
+  "clientId": "7a34d7ca-6be0-4f39-bf91-9146df1886c0",
+  "clientSecret": "pqr8Q~gUpZbYfd.dP2o5mwo8rYf7SfDrmhlcKcix",
+  "subscriptionId": "017b3490-6be9-49a4-ba0d-795637b2bce2",
+  "tenantId": "fd73ca01-1377-4863-ad01-5e76213c50e1",
+  "activeDirectoryEndpointUrl": "https://login.microsoftonline.com",
+  "resourceManagerEndpointUrl": "https://management.azure.com/",
+  "activeDirectoryGraphResourceId": "https://graph.windows.net/",
+  "sqlManagementEndpointUrl": "https://management.core.windows.net:8443/",
+  "galleryEndpointUrl": "https://gallery.azure.com/",
+  "managementEndpointUrl": "https://management.core.windows.net/"
+}
+
+✅ Step 3: Create GitHub Actions Workflow
+Create the file .github/workflows/terraform.yml:
+
+name: 'Terraform Azure Deployment'
+
+on:
+  push:
+    branches:
+      - main  # or master
+  pull_request:
+
+jobs:
+  terraform:
+    name: 'Terraform Apply'
+    runs-on: ubuntu-latest
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.6
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Validate
+      run: terraform validate
+
+    - name: Terraform Plan
+      run: terraform plan -input=false
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -input=false
+
+
+✅ Step 4: Push to GitHub
+
+Initialize a Git repository if not already done:
+
+git init
+git remote add origin https://github.com/<your-username>/<your-repo>.git
+git add .
+git commit -m "Initial commit - Terraform Azure VM deployment"
+git push -u origin main
+
+Once pushed, GitHub Actions will automatically:
+
+Checkout your code
+
+Authenticate with Azure
+
+Run terraform init, validate, plan, and apply
+
+✅ Step 5: (Optional) Add State Storage (Azure Storage Backend)
+For better state management, configure remote backend:
+
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "terraform-backend-rg"
+    storage_account_name = "yourstorageacct"
+    container_name       = "tfstate"
+    key                  = "terraform.tfstate"
+  }
+}
+
+You’ll need to create the storage account and container before running.
+
+Let me know if you want help setting up the backend or a destroy job (for cleanup), or scheduling auto-deployments!
