@@ -2,6 +2,7 @@ resource "azurerm_resource_group" "RG" {
   name     = "RG_Group"
   location = var.location
 }
+
 resource "azurerm_public_ip" "pub001" {
   name                = "TestPublicIP"
   location            = var.location
@@ -33,7 +34,7 @@ resource "azurerm_network_interface" "test_network" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.internal.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id        = azurerm_public_ip.pub001.id
+    public_ip_address_id          = azurerm_public_ip.pub001.id
   }
 }
 
